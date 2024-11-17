@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resolución de Acertijos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        #acertijo, #menu, #admin-panel {
+            display: none;
+        }
+        .hidden {
+            display: none;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Resolución de Acertijos</h1>
+
+    <!-- Pantalla de inicio -->
+    <div id="auth">
+        <h2>Bienvenido</h2>
+        <p>Introduce tu nombre de usuario único para comenzar:</p>
+        <input type="text" id="username" placeholder="Nombre de usuario">
+        <button onclick="start()">Iniciar</button>
+        <p id="error-message" class="error"></p>
+        <p><button onclick="adminLogin()">Soy Administrador</button></p>
+    </div>
+
+    <!-- Panel de acertijos -->
+    <div id="menu">
+        <h2>Selecciona un grupo</h2>
+        <div id="menu-buttons"></div>
+    </div>
+
+    <div id="acertijo">
+        <h2 id="question"></h2>
+        <input type="text" id="answer" placeholder="Escribe tu respuesta">
+        <button onclick="checkAnswer()">Enviar</button>
+        <p id="feedback"></p>
+    </div>
+
+    <!-- Panel de administrador -->
+    <div id="admin-panel">
+        <h2>Panel de Administrador</h2>
+        <button onclick="logout()">Cerrar Sesión</button>
+        <h3>Cambiar Contraseña</h3>
+        <input type="password" id="new-password" placeholder="Nueva contraseña">
+        <button onclick="changePassword()">Cambiar</button>
+        <p id="password-feedback"></p>
+        <h3>Usuarios y Respuestas</h3>
+        <ul id="user-data"></ul>
+    </div>
+
+    <script>
+        const acertijos = {
+            "Individuales": [
+                { pregunta: "¿Qué tiene cabeza, pero no cerebro?", respuesta: "Ajo" },
+                { pregunta: "¿Qué cosa tiene una llave pero no abre ninguna puerta?", respuesta: "El piano" }
+            ],
+            "Animales": [
+                { pregunta: "¿Qué animal tiene cuatro rodillas y no puede saltar?", respuesta: "Elefante" },
+                { pregunta: "¿Qué tiene orejas largas, pero no escucha bien?", respuesta: "Burro" }
+            ]
+        };
+
+        let currentGroup = null;
+        let currentIndex = 0;
+        let currentUser = null;
+        let adminPassword = "soldeverano";
+
+        const users = JSON.parse(localStorage.getItem("users")) || {};
+
+        function start() {
+            const username = document.getElementById("username").value.trim();
+            const errorMessage = document.getElementById("error-message");
+
+            if (!username) {
+                errorMessage.textContent = "Por favor, ingresa un nombre.";
+                return;
+            }
+
+            if (username === "admin") {
+                errorMessage.textContent = "Nombre de usuario reservado para el administrador.";
+                return;
+            }
+
+            currentUser = username;
+            users[username] = users[username] || { progress: {} };
+            localStorage.setItem("users", JSON.stringify(users));
+            document.getElementById("auth").style.display = "none";
+            document.getElementById("menu").style.display = "block";
+            renderMenu();
+        }
+
+        function adminLogin() {
+            const password = prompt("Introduce la contraseña del administrador:");
+            if (password === adminPassword) {
+                renderAdminPanel();
+            } else {
+                alert("Contraseña incorrecta.");
+            }
+        }
+
+        function renderMenu() {
+            const menuButtons = document.getElementById("menu-buttons");
+            menuButtons.innerHTML = "";
+
+            for (const group in acertijos) {
+                const button = document.createElement("button");
+                button.textContent = group;
+                button.onclick = () => startGroup(group);
+                menuButtons.appendChild(button);
+            }
+        }
+
+        function startGroup(group) {
+            currentGroup = group;
+            currentIndex = 0;
+            showAcertijo();
+        }
+
+        function showAcertijo() {
+            const acertijoDiv = document.getElementById("acertijo");
+            const question = document.getElementById("question");
+
+            const currentAcertijo = acertijos[currentGroup][currentIndex];
+            if (!currentAcertijo) {
+                alert("¡Has completado todos los acertijos de este grupo!");
+                return;
+            }
+
+            question.textContent = currentAcertijo.pregunta;
+            document.getElementById("feedback").textContent = "";
+            document.getElementById("answer").value = "";
+            acertijoDiv.style.display = "block";
+        }
+
+        function checkAnswer() {
+            const answerInput = document.getElementById("answer").value.trim().toLowerCase();
+            const feedback = document.getElementById("feedback");
+            const currentAcertijo = acertijos[currentGroup][currentIndex];
+
+            if (answerInput === currentAcertijo.respuesta.toLowerCase()) {
+                feedback.textContent = "¡Correcto!";
+                feedback.style.color = "green";
+
+                users[currentUser].progress[currentGroup] = users[currentUser].progress[currentGroup] || [];
+                users[currentUser].progress[currentGroup].push(currentAcertijo.pregunta);
+                localStorage.setItem("users", JSON.stringify(users));
+
+                currentIndex++;
+                setTimeout(showAcertijo, 1000);
+            } else {
+                feedback.textContent = "Incorrecto. Intenta de nuevo.";
+                feedback.style.color = "red";
+            }
+        }
+
+        function renderAdminPanel() {
+            document.getElementById("auth").style.display = "none";
+            document.getElementById("menu").style.display = "none";
+            document.getElementById("acertijo").style.display = "none";
+            document.getElementById("admin-panel").style.display = "block";
+
+            const userData = document.getElementById("user-data");
+            userData.innerHTML = "";
+
+            for (const user in users) {
+                const li = document.createElement("li");
+                li.textContent = `${user}: ${JSON.stringify(users[user].progress)}`;
+                userData.appendChild(li);
+            }
+        }
+
+        function logout() {
+            document.getElementById("admin-panel").style.display = "none";
+            document.getElementById("auth").style.display = "block";
+        }
+
+        function changePassword() {
+            const newPassword = document.getElementById("new-password").value.trim();
+            if (!newPassword) {
+                document.getElementById("password-feedback").textContent = "La contraseña no puede estar vacía.";
+                return;
+            }
+            adminPassword = newPassword;
+            document.getElementById("password-feedback").textContent = "Contraseña cambiada exitosamente.";
+        }
+    </script>
+</body>
+</html>
